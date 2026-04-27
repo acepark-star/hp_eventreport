@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>이벤트 개선 리포트</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --brand: #FF540F;
+    --brand-soft: #FFF2EC;
+    --brand-hover: #E8470A;
+    --bg: #F5F6F8;
+    --surface: #FFFFFF;
+    --text-strong: #191F28;
+    --text: #333D4B;
+    --text-sub: #6B7684;
+    --text-mute: #8B95A1;
+    --border: #E5E8EB;
+    --border-soft: #F2F4F6;
+    --row-hover: #FAFBFC;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-page: 0 8px 32px rgba(0,0,0,0.08);
+    --radius: 14px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui,
+                 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "tnum";
+  }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; }
+  select { font-family: inherit; }
+
+  /* ============ UPLOAD VIEW ============ */
+  #upload-view {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+  }
+  .upload-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--surface);
+    border-radius: 24px;
+    padding: 48px 40px;
+    box-shadow: var(--shadow-card);
+    text-align: center;
+  }
+  .upload-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--brand-soft);
+    color: var(--brand);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .upload-card h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0 0 10px;
+    letter-spacing: -0.02em;
+  }
+  .upload-card p.subtitle {
+    font-size: 15px;
+    color: var(--text-sub);
+    margin: 0 0 32px;
+    line-height: 1.55;
+  }
+  .drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border: 1.5px dashed #D1D6DB;
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    background: #FAFBFC;
+    transition: all 0.18s ease;
+    cursor: pointer;
+    text-align: center;
+  }
+  .drop-zone:hover, .drop-zone.dragging {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+  }
+  .drop-zone-icon {
+    color: var(--text-mute);
+    margin-bottom: 14px;
+  }
+  .drop-zone-text {
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .drop-zone-sub {
+    font-size: 13px;
+    color: var(--text-mute);
+  }
+  .upload-card input[type="file"] { display: none; }
+
+  .file-info {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: var(--brand-soft);
+    border-radius: var(--radius-sm);
+    color: var(--brand);
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+  }
+  .file-info.show { display: flex; }
+  .file-info-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .error-box {
+    margin-top: 20px;
+    padding: 16px 18px;
+    background: #FEF2F2;
+    border-radius: var(--radius-sm);
+    color: #B91C1C;
+    font-size: 14px;
+    text-align: left;
+    line-height: 1.5;
+    display: none;
+  }
+  .error-box.show { display: block; }
+  .error-box strong { display: block; margin-bottom: 4px; font-weight: 600; }
+
+  .upload-hint {
+    margin-top: 28px;
+    padding: 16px 18px;
+    background: #F7F8FA;
+    border-radius: var(--radius-sm);
+    text-align: left;
+  }
+  .upload-hint .hint-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .upload-hint .hint-list {
+    font-size: 12.5px;
+    color: var(--text-sub);
+    line-height: 1.6;
+  }
+
+  /* ============ DETAIL VIEW ============ */
+  #detail-view { display: none; }
+  #detail-view.show { display: block; }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .topbar-title-row {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 22px 32px 14px;
+  }
+  .topbar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-weight: 800;
+    color: var(--text-strong);
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .topbar-title .tt-mark {
+    display: inline-flex;
+    width: 8px;
+    height: 28px;
+    border-radius: 3px;
+    background: var(--brand);
+  }
+  .topbar-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-label {
+    font-size: 13px;
+    color: var(--text-sub);
+    font-weight: 500;
+  }
+  .filter-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #F2F4F6;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 8px 32px 8px 12px;
+    font-size: 14px;
+    color: var(--text-strong);
+    font-weight: 500;
+    min-width: 100px;
+    max-width: 200px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'><path d='M3 4.5L6 7.5L9 4.5' stroke='%236B7684' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  /* Hospital dropdown: fixed width so it never resizes when AM filter changes.
+     Sized for up to 16 Korean chars (≈ 210px) + padding + suffix "(n개)". */
+  #hospital-select {
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .filter-select:hover { background-color: #E8EAED; }
+  .filter-select:focus { outline: none; border-color: var(--brand); background-color: #fff; }
+
+  .topbar-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .btn-primary {
+    background: var(--brand);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--brand-hover); }
+  .btn-secondary {
+    background: #F2F4F6;
+    color: var(--text);
+  }
+  .btn-secondary:hover { background: #E8EAED; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-sub);
+  }
+  .btn-ghost:hover { background: #F2F4F6; color: var(--text-strong); }
+
+  /* ============ A4 REPORT PAGES ============ */
+  /* A4 ratio = 1 : √2 ≈ 1 : 1.414 */
+  #report-container {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 32px 16px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .a4-page {
+    width: 794px;
+    min-height: 1123px;
+    background: var(--surface);
+    border-radius: 8px;
+    box-shadow: var(--shadow-page);
+    padding: 56px 56px 48px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Hospital header */
+  .h-header {
+    margin-bottom: 28px;
+  }
+  .h-report-kicker {
+    display: inline-flex;
+    align-items: center;
+    color: var(--brand);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 10px;
+    text-transform: none;
+  }
+  .h-name {
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--text-strong);
+    letter-spacing: -0.025em;
+    margin: 0 0 14px;
+    line-height: 1.15;
+  }
+  .h-meta {
+    display: flex;
+    align-items: center;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .status-pill.ok {
+    background: #EAF7EE;
+    color: #1F8A3D;
+  }
+  .status-pill.warn {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+  .status-pill.neutral {
+    background: #F2F4F6;
+    color: var(--text-sub);
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .count {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand);
+    background: var(--brand-soft);
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  /* Table */
+  .events-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    table-layout: fixed;
+  }
+  .events-table thead th {
+    background: #FAFBFC;
+    color: var(--text-sub);
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 12px 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    letter-spacing: 0;
+  }
+  .events-table thead th:first-child { border-top-left-radius: 8px; padding-left: 14px; text-align: left; }
+  .events-table thead th:last-child { border-top-right-radius: 8px; padding-right: 14px; }
+  .events-table tbody td {
+    padding: 14px 8px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--text);
+    text-align: center;
+    vertical-align: middle;
+  }
+  .events-table tbody tr:last-child td { border-bottom: none; }
+  .events-table .col-id { width: 72px; text-align: left; padding-left: 14px; color: var(--text-sub); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+  .events-table .col-title { text-align: left; padding-left: 4px; padding-right: 4px; line-height: 1.45; font-weight: 500; color: var(--text-strong); word-break: keep-all; }
+  .events-table .col-flag { width: 60px; }
+  .events-table thead th.col-id { padding-left: 14px; }
+
+  /* Inline status badge appended to event title (for 피스 / 대기) */
+  .title-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0;
+    vertical-align: 2px;
+    white-space: nowrap;
+  }
+  .title-badge.badge-대기 { background: #FEF6E0; color: #A36A00; }
+  .title-badge.badge-피스 { background: var(--brand-soft); color: var(--brand); }
+
+  /* Alert icon — "needs improvement" signal, more urgent than a plain dot */
+  .alert-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+    box-shadow: 0 0 0 4px rgba(255, 84, 15, 0.14);
+    user-select: none;
+  }
+  .alert-icon::before { content: '!'; display: block; transform: translateY(-0.5px); }
+
+  /* Empty state */
+  .empty-events {
+    padding: 60px 20px;
+    text-align: center;
+    background: #FAFBFC;
+    border-radius: var(--radius);
+    color: var(--text-sub);
+  }
+  .empty-events .empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--brand-soft);
+    color: var(--brand);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .empty-events .empty-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin-bottom: 6px;
+  }
+  .empty-events .empty-desc {
+    font-size: 13.5px;
+  }
+
+  /* Guide section — visually distinct from the event list */
+  .guide-section {
+    margin-top: 44px;
+    padding: 28px 28px 26px;
+    background: #FFF9F5;
+    border: 1px solid #FFE3D0;
+    border-radius: 16px;
+    position: relative;
+  }
+  .guide-section .gs-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--brand);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+  .guide-section .gs-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-strong);
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .guide-section .gs-desc {
+    font-size: 12.5px;
+    color: var(--text-sub);
+    margin: 0 0 18px;
+    line-height: 1.5;
+  }
+  .guide-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .guide-item {
+    background: #fff;
+    border: 1px solid #FFE3D0;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .guide-item .gi-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .guide-item .gi-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--brand-soft);
+    color: var(--brand);
+    line-height: 1.4;
+  }
+  .guide-item ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .guide-item li {
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.55;
+    padding-left: 12px;
+    position: relative;
+    margin-bottom: 4px;
+  }
+  .guide-item li:last-child { margin-bottom: 0; }
+  .guide-item li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--text-mute);
+  }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .loading-overlay.show { display: flex; }
+  .loading-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px 40px;
+    text-align: center;
+    box-shadow: var(--shadow-page);
+  }
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text); font-size: 14px; font-weight: 500; }
+
+  /* Print / capture mode */
+  body.capturing { background: #fff; }
+  body.capturing .topbar { display: none; }
+  body.capturing #report-container { padding: 0; gap: 0; max-width: 794px; }
+  body.capturing .a4-page {
+    box-shadow: none;
+    border-radius: 0;
+    margin: 0;
+    width: 794px;
+    height: 1123px;
+    max-height: 1123px;
+    min-height: 1123px;
+    overflow: hidden;
+  }
+
+  /* Image export mode: render as one continuous page, no page breaks */
+  body.exporting-image { background: #fff; }
+  body.exporting-image .topbar { display: none; }
+  body.exporting-image #report-container {
+    padding: 0;
+    gap: 0;
+    max-width: 794px;
+  }
+  body.exporting-image .a4-page {
+    box-shadow: none;
+    border-radius: 0;
+    margin: 0;
+    width: 794px;
+    min-height: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding-top: 0;
+    padding-bottom: 24px;
+  }
+  body.exporting-image .a4-page:first-child {
+    padding-top: 56px;
+  }
+  body.exporting-image .a4-page:last-child {
+    padding-bottom: 48px;
+  }
+
+  @media print {
+    .topbar { display: none !important; }
+    body { background: #fff; }
+    #report-container { padding: 0; max-width: none; }
+    .a4-page {
+      box-shadow: none;
+      border-radius: 0;
+      page-break-after: always;
+      page-break-inside: avoid;
+      margin: 0;
+    }
+    .a4-page:last-child { page-break-after: auto; }
+  }
+
+  /* Mobile */
+  @media (max-width: 900px) {
+    .topbar-inner { padding: 12px 16px; }
+    .topbar-title { width: 100%; }
+    .topbar-actions { margin-left: 0; }
+    #report-container { padding: 16px 8px 32px; }
+    .a4-page { width: 100%; min-height: auto; padding: 32px 24px; }
+    .h-name { font-size: 26px; }
+    .events-table { font-size: 12px; }
+    .events-table .col-id { width: 56px; }
+    .events-table .col-flag { width: 40px; }
+    .guide-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ UPLOAD VIEW ============ -->
+<div id="upload-view">
+  <div class="upload-card">
+    <div class="upload-logo">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3h7l2 3h9v12a2 2 0 0 1-2 2H3z"/>
+        <path d="M12 11v6M9 14l3-3 3 3"/>
+      </svg>
+    </div>
+    <h1>이벤트 개선 리포트</h1>
+    <p class="subtitle">병원의 이벤트 데이터를 업로드하면<br/>병원별 개선 가이드 리포트가 만들어져요.</p>
+
+    <label for="file-input" class="drop-zone" id="drop-zone">
+      <div class="drop-zone-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="drop-zone-text">파일을 끌어다 놓거나 클릭하여 업로드</div>
+      <div class="drop-zone-sub">CSV · TSV 파일 지원 (UTF-8, UTF-16, EUC-KR)</div>
+      <input id="file-input" type="file" accept=".csv,.tsv,.txt" />
+    </label>
+
+    <div id="file-info" class="file-info">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span class="file-info-name" id="file-info-name"></span>
+    </div>
+
+    <div id="error-box" class="error-box"></div>
+  </div>
+</div>
+
+<!-- ============ DETAIL VIEW ============ -->
+<div id="detail-view">
+  <div class="topbar">
+    <div class="topbar-title-row">
+      <h1 class="topbar-title"><span class="tt-mark"></span>이벤트 개선 리포트</h1>
+    </div>
+    <div class="topbar-inner">
+      <div class="filter-group">
+        <label class="filter-label" for="am-select">담당 AM</label>
+        <select class="filter-select" id="am-select"><option value="">전체</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label" for="hospital-select">병원명</label>
+        <select class="filter-select" id="hospital-select"></select>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" id="btn-reset">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+          다른 파일
+        </button>
+        <button class="btn btn-secondary" id="btn-image">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <polyline points="8.5 14 11 17 13.5 14"/>
+            <line x1="11" y1="17" x2="11" y2="9"/>
+            <line x1="8" y1="9" x2="14" y2="9"/>
+          </svg>
+          이미지 저장
+        </button>
+        <button class="btn btn-secondary" id="btn-pdf">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="9" y1="13" x2="15" y2="13"/>
+            <line x1="9" y1="17" x2="13" y2="17"/>
+          </svg>
+          PDF 저장
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main id="report-container"></main>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="loading-card">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">파일 처리 중...</div>
+  </div>
+</div>
+
+<script>
+/* =============================================================
+   STATE
+============================================================= */
+const state = {
+  data: null,        // parsed rows (objects keyed by header)
+  hospitals: [],     // grouped { name, am, status, events: [] }
+  ams: [],           // unique AM list
+  selectedAM: '',
+  selectedHospital: ''
+};
+
+const REQUIRED_COLS = [
+  'EVENT_ID(E)', 'TITLE', 'HOSPITAL_ID', '병원명', '담당 AM',
+  '병원 상태값', '이벤트 상태값', '현재 미충족 조건(26-2)',
+  '후기수', '옵션수', '증례수', 'Q&A', '앱결제'
+];
+
+const FLAG_KEYS = ['옵션', '후기', '증례', '앱결제', 'Q&A'];
+
+/* =============================================================
+   FILE PARSING (encoding-aware)
+============================================================= */
+function detectAndDecode(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  // BOM detection
+  if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+    return new TextDecoder('utf-16le').decode(bytes.slice(2));
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    return new TextDecoder('utf-16be').decode(bytes.slice(2));
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+    return new TextDecoder('utf-8').decode(bytes.slice(3));
+  }
+  // Heuristic: if every other byte is 0, likely UTF-16 LE without BOM
+  let zeroEven = 0, zeroOdd = 0, sample = Math.min(bytes.length, 200);
+  for (let i = 0; i < sample; i++) {
+    if (bytes[i] === 0) { if (i % 2 === 0) zeroEven++; else zeroOdd++; }
+  }
+  if (zeroOdd > sample * 0.3 && zeroEven < sample * 0.05) {
+    return new TextDecoder('utf-16le').decode(bytes);
+  }
+  if (zeroEven > sample * 0.3 && zeroOdd < sample * 0.05) {
+    return new TextDecoder('utf-16be').decode(bytes);
+  }
+  // Try UTF-8 strict, fallback to EUC-KR
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return text;
+  } catch (e) {
+    try {
+      return new TextDecoder('euc-kr').decode(bytes);
+    } catch (e2) {
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+  }
+}
+
+function detectDelimiter(text) {
+  const firstLines = text.split(/\r?\n/).slice(0, 5).join('\n');
+  const tabs = (firstLines.match(/\t/g) || []).length;
+  const commas = (firstLines.match(/,/g) || []).length;
+  const semis = (firstLines.match(/;/g) || []).length;
+  if (tabs >= commas && tabs >= semis && tabs > 0) return '\t';
+  if (semis > commas) return ';';
+  return ',';
+}
+
+// Simple CSV parser supporting quoted fields
+function parseCSV(text, delimiter) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else { field += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === delimiter) { row.push(field); field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else if (c === '\n') {
+        row.push(field); rows.push(row); row = []; field = '';
+      } else { field += c; }
+    }
+  }
+  // last field
+  if (field.length > 0 || row.length > 0) {
+    row.push(field); rows.push(row);
+  }
+  // strip trailing empty rows
+  while (rows.length && rows[rows.length - 1].every(c => c === '')) rows.pop();
+  return rows;
+}
+
+function normalizeKey(s) {
+  return (s || '').replace(/\s+/g, ' ').trim();
+}
+
+/* =============================================================
+   FILE LOAD HANDLER
+============================================================= */
+async function handleFile(file) {
+  hideError();
+  showLoading('파일을 분석하고 있어요...');
+  try {
+    const buf = await file.arrayBuffer();
+    const text = detectAndDecode(buf);
+    if (!text || text.trim().length === 0) {
+      throw new Error('파일이 비어 있어요. 데이터가 포함된 CSV 파일을 업로드해 주세요.');
+    }
+    const delim = detectDelimiter(text);
+    const rows = parseCSV(text, delim);
+    if (rows.length < 2) {
+      throw new Error('데이터가 부족해요. 헤더와 최소 1개 이상의 데이터 행이 필요해요.');
+    }
+    const headers = rows[0].map(normalizeKey);
+
+    // Validate required columns
+    const missing = REQUIRED_COLS.filter(c => !headers.includes(c));
+    if (missing.length > 0) {
+      throw new Error('필수 컬럼이 부족해요.\n누락된 컬럼: ' + missing.join(', '));
+    }
+
+    // Build records
+    const records = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (r.length === 1 && r[0] === '') continue;
+      const obj = {};
+      for (let j = 0; j < headers.length; j++) {
+        obj[headers[j]] = (r[j] !== undefined ? String(r[j]).trim() : '');
+      }
+      records.push(obj);
+    }
+
+    if (records.length === 0) {
+      throw new Error('유효한 데이터 행이 없어요.');
+    }
+
+    // Filter out 총계 / summary rows
+    const filtered = records.filter(r => {
+      const status = r['병원 상태값'];
+      const cond = r['현재 미충족 조건(26-2)'];
+      const am = r['담당 AM'];
+      return status !== '총계' && cond !== '총계' && am !== '총계' && r['HOSPITAL_ID'] !== '총계';
+    });
+
+    if (filtered.length === 0) {
+      throw new Error('표시할 데이터가 없어요. 모든 행이 합계 행입니다.');
+    }
+
+    state.data = filtered;
+    buildIndex();
+    showDetailView();
+  } catch (err) {
+    console.error(err);
+    showError(err.message || '파일을 읽는 중 오류가 발생했어요.');
+  } finally {
+    hideLoading();
+  }
+}
+
+function buildIndex() {
+  // Group by hospital
+  const map = new Map();
+  for (const r of state.data) {
+    const hid = r['HOSPITAL_ID'] + '__' + r['병원명'];
+    if (!map.has(hid)) {
+      map.set(hid, {
+        id: r['HOSPITAL_ID'],
+        name: r['병원명'],
+        am: r['담당 AM'],
+        status: r['병원 상태값'],
+        events: []
+      });
+    }
+    map.get(hid).events.push(r);
+  }
+  state.hospitals = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+  const amSet = new Set();
+  state.hospitals.forEach(h => { if (h.am) amSet.add(h.am); });
+  state.ams = Array.from(amSet).sort((a, b) => a.localeCompare(b, 'ko'));
+
+  // Populate AM dropdown
+  const amSel = document.getElementById('am-select');
+  amSel.innerHTML = '<option value="">전체</option>' + state.ams.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+
+  populateHospitalDropdown();
+}
+
+function populateHospitalDropdown() {
+  const hSel = document.getElementById('hospital-select');
+  const filtered = state.selectedAM
+    ? state.hospitals.filter(h => h.am === state.selectedAM)
+    : state.hospitals;
+  if (filtered.length === 0) {
+    hSel.innerHTML = '<option value="">표시할 병원이 없어요</option>';
+    state.selectedHospital = '';
+    renderEmpty();
+    return;
+  }
+  hSel.innerHTML = filtered.map(h =>
+    `<option value="${escapeHtml(h.id + '__' + h.name)}">${escapeHtml(h.name)} (${h.events.length}개)</option>`
+  ).join('');
+  // Keep selection if still valid
+  const stillValid = filtered.find(h => (h.id + '__' + h.name) === state.selectedHospital);
+  if (!stillValid) state.selectedHospital = filtered[0].id + '__' + filtered[0].name;
+  hSel.value = state.selectedHospital;
+  renderReport();
+}
+
+/* =============================================================
+   DEFICIENCY PARSING
+============================================================= */
+// Parse the "현재 미충족 조건(26-2)" column to flags
+function parseDeficiencyFlags(condText) {
+  // Examples: "옵션 미달성", "Q&A, 앱결제, 후기 미달성", "병원 상태 미달, 이벤트 상태 미달"
+  if (!condText) return new Set();
+  const flags = new Set();
+  // Replace common suffixes
+  const cleaned = condText.replace(/미달성/g, '').replace(/미달/g, '');
+  // Split by comma
+  const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+  for (const p of parts) {
+    // 'Q&A' contains '&' so we check it specially
+    if (/q\s*&\s*a/i.test(p) || p.includes('Q&A')) flags.add('Q&A');
+    else if (p.includes('앱결제')) flags.add('앱결제');
+    else if (p.includes('증례')) flags.add('증례');
+    else if (p.includes('후기')) flags.add('후기');
+    else if (p.includes('옵션')) flags.add('옵션');
+    // 병원 상태 / 이벤트 상태 are intentionally ignored (shown via status pills)
+  }
+  return flags;
+}
+
+/* =============================================================
+   RENDER
+============================================================= */
+function statusPillClass(s) {
+  if (!s) return 'neutral';
+  if (s === '정식입점' || s === '승인') return 'ok';
+  if (s === '퇴점' || s === '포인트충전프로모션' || s === '대기' || s === '피스') return 'warn';
+  // 휴면 falls through to neutral (gray)
+  return 'neutral';
+}
+
+function statusPillHtml(s, label) {
+  const cls = statusPillClass(s);
+  return `<span class="status-pill ${cls}"><span class="status-dot"></span>${escapeHtml(label || s || '-')}</span>`;
+}
+
+function buildEventRowHtml(ev) {
+  const flags = parseDeficiencyFlags(ev['현재 미충족 조건(26-2)']);
+  const evStatus = ev['이벤트 상태값'] || '';
+  let badge = '';
+  if (evStatus === '피스' || evStatus === '대기') {
+    badge = ` <span class="title-badge badge-${evStatus}">${escapeHtml(evStatus)}</span>`;
+  }
+  const flagCells = FLAG_KEYS.map(k =>
+    `<td class="col-flag">${flags.has(k) ? '<span class="alert-icon" aria-label="개선 필요"></span>' : ''}</td>`
+  ).join('');
+  return `<tr>
+    <td class="col-id">${escapeHtml(ev['EVENT_ID(E)'])}</td>
+    <td class="col-title">${escapeHtml(ev['TITLE'] || '-')}${badge}</td>
+    ${flagCells}
+  </tr>`;
+}
+
+function buildHospitalHeaderHtml(h) {
+  return `<div class="h-header">
+    <div class="h-report-kicker">강남언니 이벤트 개선 리포트</div>
+    <h1 class="h-name">${escapeHtml(h.name)}</h1>
+    <div class="h-meta">
+      ${statusPillHtml(h.status)}
+    </div>
+  </div>`;
+}
+
+function buildTableHtml(events) {
+  const rows = events.map(buildEventRowHtml).join('');
+  return `<table class="events-table">
+    <thead>
+      <tr>
+        <th class="col-id">ID</th>
+        <th class="col-title" style="text-align:left;">이벤트명</th>
+        <th class="col-flag">옵션</th>
+        <th class="col-flag">후기</th>
+        <th class="col-flag">증례</th>
+        <th class="col-flag">앱결제</th>
+        <th class="col-flag">Q&amp;A</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function buildGuideHtml() {
+  const items = [
+    { tag: '옵션', lines: [
+      '옵션수가 1개 이상이면 상담신청이 늘어날 수 있어요.',
+      '용량(cc, 샷)을 다양화하거나 여러 시술을 결합한 옵션을 구성해 보세요.'
+    ]},
+    { tag: '후기', lines: [
+      '후기가 1개 이상이면 상담신청이 늘어날 수 있어요.',
+      '고객의 가장 큰 의사결정 요소 중 하나인 후기를 쌓아주세요.'
+    ]},
+    { tag: '증례', lines: [
+      '전/후 사진이 포함되어 있으면 상담신청이 늘어날 수 있어요.',
+      '우리 병원만의 강점을 보여줄 수 있는 전/후 사진을 등록해 주세요.'
+    ]},
+    { tag: '앱결제', lines: [
+      '단순 상담 신청을 한 고객 대비 앱결제 고객의 내원율은 약 2배 높아요.',
+      '앱결제를 ON으로 설정하여 내원율을 늘려 보세요.'
+    ]},
+    { tag: 'Q&A', lines: [
+      'Q&A 답변이 없으면 고객은 ‘방치된 이벤트’로 인식해요.',
+      'Q&A 에 작성된 답변은 다른 고객들에게도 정보탐색 요소로 활용될 수 있어요.'
+    ]}
+  ];
+  const grid = items.map(it => `
+    <div class="guide-item">
+      <div class="gi-head"><span class="gi-tag">${escapeHtml(it.tag)}</span></div>
+      <ul>${it.lines.map(l => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
+    </div>`).join('');
+  return `<section class="guide-section">
+    <div class="gs-kicker">TIP</div>
+    <h2 class="gs-title">이벤트 개선 가이드</h2>
+    <p class="gs-desc">아래 항목을 보강하면 더 많은 상담 신청을 받을 수 있어요.</p>
+    <div class="guide-grid">${grid}</div>
+  </section>`;
+}
+
+/* =============================================================
+   PAGINATION
+   - Page 1 starts with hospital header.
+   - Subsequent pages continue table.
+   - Guide is treated as one block — must fit entirely on a page.
+   - If guide can't fit on the last table page, push to a new page.
+============================================================= */
+function paginate(hospital) {
+  // Conservative pixel estimates (px @ standard render). A4 = 794×1123px.
+  // Under-commit so actual rendered height never exceeds the page.
+  const PAGE_USABLE_HEIGHT = 920;
+  const HOSPITAL_HEADER_H = 130;   // kicker + name + status pill
+  const SECTION_TITLE_H   = 44;    // "이벤트 목록 Nn건" — first page only
+  const TABLE_HEADER_H    = 48;
+  const ROW_H_BASE        = 54;
+  const ROW_H_MED         = 78;    // titles 26-50 chars (2 lines)
+  const ROW_H_LONG        = 102;   // titles > 50 chars (3 lines)
+  const GUIDE_H           = 540;   // guide section w/ new padding + 44px margin-top
+
+  const events = hospital.events;
+  const pages = [];
+  let cursor = 0;
+  let isFirstPage = true;
+
+  while (cursor < events.length) {
+    const firstPageChrome = isFirstPage ? (HOSPITAL_HEADER_H + SECTION_TITLE_H) : 0;
+    let availH = PAGE_USABLE_HEIGHT - firstPageChrome - TABLE_HEADER_H;
+    const rows = [];
+    while (cursor < events.length) {
+      const title = events[cursor]['TITLE'] || '';
+      const len = title.length;
+      const rowH = len > 50 ? ROW_H_LONG : len > 25 ? ROW_H_MED : ROW_H_BASE;
+      if (availH - rowH < 0 && rows.length > 0) break;
+      rows.push(events[cursor]);
+      availH -= rowH;
+      cursor++;
+    }
+    pages.push({ kind: 'table', rows, isFirstPage, availRemaining: availH });
+    isFirstPage = false;
+  }
+
+  // Try to fit guide on last page; else push to new page
+  const lastPage = pages[pages.length - 1];
+  if (lastPage && lastPage.availRemaining >= GUIDE_H) {
+    lastPage.includeGuide = true;
+  } else {
+    pages.push({ kind: 'guide-only' });
+  }
+
+  return pages;
+}
+
+function renderReport() {
+  const container = document.getElementById('report-container');
+  container.innerHTML = '';
+  const hospital = state.hospitals.find(h => (h.id + '__' + h.name) === state.selectedHospital);
+  if (!hospital) {
+    renderEmpty();
+    return;
+  }
+
+  const pages = paginate(hospital);
+
+  pages.forEach((p) => {
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'a4-page';
+    let inner = '';
+    if (p.kind === 'table') {
+      if (p.isFirstPage) {
+        inner += buildHospitalHeaderHtml(hospital);
+        inner += `<div class="section-title">이벤트 목록 <span class="count">${hospital.events.length}건</span></div>`;
+      }
+      inner += buildTableHtml(p.rows);
+      if (p.includeGuide) inner += buildGuideHtml();
+    } else if (p.kind === 'guide-only') {
+      inner += buildGuideHtml();
+    }
+    pageDiv.innerHTML = inner;
+    container.appendChild(pageDiv);
+  });
+}
+
+function renderEmpty() {
+  document.getElementById('report-container').innerHTML = `
+    <div class="a4-page">
+      <div class="empty-events">
+        <div class="empty-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="empty-title">표시할 병원이 없어요</div>
+        <div class="empty-desc">상단에서 다른 담당 AM을 선택해 보세요.</div>
+      </div>
+    </div>`;
+}
+
+/* =============================================================
+   EXPORT
+============================================================= */
+async function exportPDF() {
+  const pages = document.querySelectorAll('#report-container .a4-page');
+  if (pages.length === 0) return;
+  const hospital = state.hospitals.find(h => (h.id + '__' + h.name) === state.selectedHospital);
+  showLoading('PDF를 만들고 있어요...');
+  document.body.classList.add('capturing');
+  try {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  } catch (e) { /* non-fatal */ }
+  await waitFrame();
+  await waitFrame();
+  await new Promise(r => setTimeout(r, 50));
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    for (let i = 0; i < pages.length; i++) {
+      // Capture each page at EXACT A4 pixel dimensions so each PDF page fills A4.
+      const canvas = await html2canvas(pages[i], {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        width: 794,
+        height: 1123,
+        // Must be > 900px to avoid triggering @media (max-width: 900px),
+        // which would force the guide grid to 1 column and break layout.
+        windowWidth: 1200,
+        windowHeight: 1200
+      });
+      const imgData = canvas.toDataURL('image/png');
+      if (i > 0) pdf.addPage();
+      // Fill the entire A4 page — guaranteed page flow.
+      pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+    }
+    const fname = `이벤트개선리포트_${hospital ? hospital.name : 'report'}_${todayStr()}.pdf`;
+    pdf.save(fname);
+  } catch (e) {
+    console.error(e);
+    alert('PDF 생성 중 오류가 발생했어요.\n' + (e.message || ''));
+  } finally {
+    document.body.classList.remove('capturing');
+    hideLoading();
+  }
+}
+
+async function exportImage() {
+  const hospital = state.hospitals.find(h => (h.id + '__' + h.name) === state.selectedHospital);
+  if (!hospital) return;
+  showLoading('이미지를 만들고 있어요...');
+
+  // Build a single continuous, unpaginated report.
+  const tempDiv = document.createElement('div');
+  tempDiv.className = 'a4-page';
+  tempDiv.style.cssText = [
+    'width: 794px',
+    'min-height: auto',
+    'height: auto',
+    'max-height: none',
+    'overflow: visible',
+    'padding: 56px',
+    'margin: 0',
+    'border-radius: 0',
+    'box-shadow: none',
+    'background: #ffffff',
+    // Place BELOW existing content (not off to the side).
+    // Off-screen-left can confuse html2canvas's clip bounds.
+    'position: absolute',
+    'left: 0',
+    `top: ${document.documentElement.scrollHeight + 40}px`,
+    'box-sizing: border-box'
+  ].join(';');
+  tempDiv.innerHTML =
+    buildHospitalHeaderHtml(hospital)
+    + `<div class="section-title">이벤트 목록 <span class="count">${hospital.events.length}건</span></div>`
+    + buildTableHtml(hospital.events)
+    + buildGuideHtml();
+  document.body.appendChild(tempDiv);
+
+  // Wait for web fonts, layout, and any images to settle.
+  try {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  } catch (e) { /* non-fatal */ }
+  for (let i = 0; i < 4; i++) await waitFrame();
+  await new Promise(r => setTimeout(r, 150));
+  await waitFrame();
+
+  try {
+    // scrollHeight gives us the full content height including overflow.
+    // getBoundingClientRect().height gives the rendered box height.
+    // Take the larger and add a generous buffer.
+    const measuredH = Math.max(
+      tempDiv.scrollHeight,
+      tempDiv.getBoundingClientRect().height
+    );
+    const fullHeight = Math.ceil(measuredH) + 40;
+
+    const canvas = await html2canvas(tempDiv, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+      width: 794,
+      height: fullHeight,
+      // windowWidth > 900 is CRITICAL — prevents @media (max-width: 900px)
+      // from forcing guide-grid to 1 column, which makes the element taller
+      // than fullHeight and causes bottom clipping.
+      windowWidth: 1200,
+      windowHeight: fullHeight + 200
+    });
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.download = `이벤트개선리포트_${hospital.name}_${todayStr()}.png`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (e) {
+    console.error(e);
+    alert('이미지 생성 중 오류가 발생했어요.\n' + (e.message || ''));
+  } finally {
+    if (tempDiv.parentNode) tempDiv.parentNode.removeChild(tempDiv);
+    hideLoading();
+  }
+}
+
+function todayStr() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+}
+
+function waitFrame() {
+  return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+/* =============================================================
+   UI HELPERS
+============================================================= */
+function escapeHtml(s) {
+  if (s === undefined || s === null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.innerHTML = '<strong>파일을 불러올 수 없어요</strong>' + escapeHtml(msg).replace(/\n/g, '<br/>');
+  box.classList.add('show');
+}
+function hideError() {
+  document.getElementById('error-box').classList.remove('show');
+}
+function showLoading(t) {
+  document.getElementById('loading-text').textContent = t || '잠시만 기다려 주세요...';
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+function showDetailView() {
+  document.getElementById('upload-view').style.display = 'none';
+  document.getElementById('detail-view').classList.add('show');
+}
+function showUploadView() {
+  document.getElementById('upload-view').style.display = '';
+  document.getElementById('detail-view').classList.remove('show');
+  document.getElementById('file-info').classList.remove('show');
+  hideError();
+  state.data = null;
+  state.hospitals = [];
+  state.ams = [];
+  state.selectedAM = '';
+  state.selectedHospital = '';
+}
+
+/* =============================================================
+   EVENT WIRING
+============================================================= */
+const fileInput = document.getElementById('file-input');
+const dropZone = document.getElementById('drop-zone');
+
+fileInput.addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  showFileInfo(f);
+  handleFile(f);
+});
+
+['dragenter', 'dragover'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('dragging'); })
+);
+['dragleave', 'drop'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('dragging'); })
+);
+dropZone.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  showFileInfo(f);
+  handleFile(f);
+});
+
+function showFileInfo(f) {
+  const el = document.getElementById('file-info');
+  document.getElementById('file-info-name').textContent = f.name + ' (' + formatBytes(f.size) + ')';
+  el.classList.add('show');
+}
+function formatBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+document.getElementById('am-select').addEventListener('change', (e) => {
+  state.selectedAM = e.target.value;
+  populateHospitalDropdown();
+});
+document.getElementById('hospital-select').addEventListener('change', (e) => {
+  state.selectedHospital = e.target.value;
+  renderReport();
+});
+document.getElementById('btn-pdf').addEventListener('click', exportPDF);
+document.getElementById('btn-image').addEventListener('click', exportImage);
+document.getElementById('btn-reset').addEventListener('click', () => {
+  fileInput.value = '';
+  showUploadView();
+});
+
+</script>
+</body>
+</html>
