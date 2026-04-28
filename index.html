@@ -955,7 +955,7 @@ function buildIndex() {
   populateHospitalDropdown();
 }
 
-function populateHospitalDropdown() {
+async function populateHospitalDropdown() {
   const hSel = document.getElementById('hospital-select');
   const filtered = state.selectedAM
     ? state.hospitals.filter(h => h.am === state.selectedAM)
@@ -973,7 +973,7 @@ function populateHospitalDropdown() {
   const stillValid = filtered.find(h => (h.id + '__' + h.name) === state.selectedHospital);
   if (!stillValid) state.selectedHospital = filtered[0].id + '__' + filtered[0].name;
   hSel.value = state.selectedHospital;
-  renderReport();
+  await renderReport();
 }
 
 /* =============================================================
@@ -1098,68 +1098,116 @@ function buildGuideHtml() {
 }
 
 /* =============================================================
-   PAGINATION
-   - Page 1 starts with hospital header.
-   - Subsequent pages continue table.
-   - Guide is treated as one block — must fit entirely on a page.
-   - If guide can't fit on the last table page, push to a new page.
+   PAGINATION — DOM-measurement based
+   1. Render all rows into a hidden probe table at exact A4 content width
+   2. Measure each row's actual offsetHeight from the DOM
+   3. Use real heights to pack pages perfectly
+   4. Guide is kept as one block; pushed to next page if it won't fit
 ============================================================= */
-function paginate(hospital) {
-  // Conservative pixel estimates (px @ standard render). A4 = 794×1123px.
-  // Under-commit so actual rendered height never exceeds the page.
-  const PAGE_USABLE_HEIGHT = 920;
-  const HOSPITAL_HEADER_H = 130;   // kicker + name + status pill
-  const SECTION_TITLE_H   = 44;    // "이벤트 목록 Nn건" — first page only
-  const TABLE_HEADER_H    = 48;
-  const ROW_H_BASE        = 54;
-  const ROW_H_MED         = 78;    // titles 26-50 chars (2 lines)
-  const ROW_H_LONG        = 102;   // titles > 50 chars (3 lines)
-  const GUIDE_H           = 540;   // guide section w/ new padding + 44px margin-top
 
+// A4 page inner dims (px):  page=794px, padding=56px each side → content=682px
+// Usable height = 1123 - 56(top) - 48(bottom) = 1019px.
+// We subtract 20px safety margin → 999px.
+const A4_USABLE_H = 999;
+const A4_PAD_H    = 56 + 48;  // top + bottom padding
+
+// Measure every row's actual rendered height by building a hidden table.
+// Returns an array of numbers, one per event (in same order as events[]).
+async function measureRowHeights(events) {
+  const probe = document.createElement('div');
+  probe.style.cssText = [
+    'position:absolute', 'left:-9999px', 'top:0',
+    'width:682px',        // A4 content width (794 - 56 - 56)
+    'visibility:hidden',  'pointer-events:none',
+    'font-family:inherit', 'font-size:13px'
+  ].join(';');
+
+  // Build a real table so CSS from .events-table applies
+  probe.innerHTML = `<table class="events-table" style="table-layout:fixed;width:100%">
+    <colgroup>
+      <col style="width:72px"/>
+      <col/>
+      <col style="width:60px"/><col style="width:60px"/>
+      <col style="width:60px"/><col style="width:60px"/><col style="width:60px"/>
+    </colgroup>
+    <tbody>${events.map(ev => buildEventRowHtml(ev)).join('')}</tbody>
+  </table>`;
+
+  document.body.appendChild(probe);
+  // One rAF so the browser finishes layout
+  await new Promise(r => requestAnimationFrame(r));
+
+  const trs = probe.querySelectorAll('tbody tr');
+  const heights = Array.from(trs).map(tr => tr.offsetHeight || 48);
+  document.body.removeChild(probe);
+  return heights;
+}
+
+// Measure a single block's height (header, section-title, guide, table-header)
+function measureBlock(html, extraStyle = '') {
+  const probe = document.createElement('div');
+  probe.style.cssText = [
+    'position:absolute', 'left:-9999px', 'top:0',
+    'width:682px', 'visibility:hidden', 'pointer-events:none',
+    'font-family:inherit', extraStyle
+  ].join(';');
+  probe.innerHTML = html;
+  document.body.appendChild(probe);
+  const h = probe.offsetHeight || 0;
+  document.body.removeChild(probe);
+  return h;
+}
+
+async function renderReport() {
+  const container = document.getElementById('report-container');
+  container.innerHTML = '';
+  const hospital = state.hospitals.find(h => (h.id + '__' + h.name) === state.selectedHospital);
+  if (!hospital) { renderEmpty(); return; }
+
+  // ---- measure real heights ----
+  const rowHeights = await measureRowHeights(hospital.events);
+
+  const headerH       = measureBlock(buildHospitalHeaderHtml(hospital));
+  const sectionTitleH = measureBlock(`<div class="section-title">이벤트 목록 <span class="count">${hospital.events.length}건</span></div>`);
+  const tableHeaderH  = measureBlock(`<table class="events-table" style="table-layout:fixed;width:100%"><thead><tr>
+    <th class="col-id">ID</th>
+    <th class="col-title">이벤트명</th>
+    <th class="col-flag">옵션</th><th class="col-flag">후기</th>
+    <th class="col-flag">증례</th><th class="col-flag">앱결제</th><th class="col-flag">Q&A</th>
+  </tr></thead></table>`);
+  const guideH = measureBlock(buildGuideHtml(), 'font-size:13px');
+
+  // ---- paginate using real heights ----
   const events = hospital.events;
   const pages = [];
   let cursor = 0;
   let isFirstPage = true;
 
   while (cursor < events.length) {
-    const firstPageChrome = isFirstPage ? (HOSPITAL_HEADER_H + SECTION_TITLE_H) : 0;
-    let availH = PAGE_USABLE_HEIGHT - firstPageChrome - TABLE_HEADER_H;
+    const chrome = isFirstPage ? (headerH + sectionTitleH) : 0;
+    let availH = A4_USABLE_H - chrome - tableHeaderH;
     const rows = [];
+
     while (cursor < events.length) {
-      const title = events[cursor]['TITLE'] || '';
-      const len = title.length;
-      const rowH = len > 50 ? ROW_H_LONG : len > 25 ? ROW_H_MED : ROW_H_BASE;
-      if (availH - rowH < 0 && rows.length > 0) break;
+      const rh = rowHeights[cursor];
+      if (rows.length > 0 && availH - rh < 0) break;
       rows.push(events[cursor]);
-      availH -= rowH;
+      availH -= rh;
       cursor++;
     }
     pages.push({ kind: 'table', rows, isFirstPage, availRemaining: availH });
     isFirstPage = false;
   }
 
-  // Try to fit guide on last page; else push to new page
+  // Guide: append to last table page if it fits, else new page
   const lastPage = pages[pages.length - 1];
-  if (lastPage && lastPage.availRemaining >= GUIDE_H) {
+  if (lastPage && lastPage.availRemaining >= guideH) {
     lastPage.includeGuide = true;
   } else {
     pages.push({ kind: 'guide-only' });
   }
 
-  return pages;
-}
-
-function renderReport() {
-  const container = document.getElementById('report-container');
-  container.innerHTML = '';
-  const hospital = state.hospitals.find(h => (h.id + '__' + h.name) === state.selectedHospital);
-  if (!hospital) {
-    renderEmpty();
-    return;
-  }
-
-  const pages = paginate(hospital);
-
+  // ---- render pages ----
   pages.forEach((p) => {
     const pageDiv = document.createElement('div');
     pageDiv.className = 'a4-page';
