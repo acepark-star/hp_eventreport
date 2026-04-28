@@ -180,9 +180,9 @@
     border-bottom: 1px solid var(--border-soft);
   }
   .topbar-title-row {
-    max-width: 1100px;
+    max-width: 850px;
     margin: 0 auto;
-    padding: 22px 32px 14px;
+    padding: 22px 16px 14px;
   }
   .topbar-title {
     display: inline-flex;
@@ -203,13 +203,13 @@
     background: var(--brand);
   }
   .topbar-inner {
-    max-width: 1100px;
+    max-width: 850px;
     margin: 0 auto;
-    padding: 0 32px 16px;
+    padding: 0 16px 14px;
     display: flex;
     align-items: center;
     gap: 12px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
   .filter-group {
     display: flex;
@@ -251,11 +251,150 @@
   .filter-select:hover { background-color: #E8EAED; }
   .filter-select:focus { outline: none; border-color: var(--brand); background-color: #fff; }
 
+  /* ── chip filter bar ── */
+  .topbar-chips {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 0 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  /* First chip row (KR6 + 달성여부) — divider separates from dropdown row above */
+  .topbar-chips-row1 {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 10px 16px 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid var(--border-soft);
+  }
+  /* Second chip row (improvement filters) — no divider, same section as row1 */
+  .topbar-chips-row2 {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 0 16px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .chip-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #F2F4F6;
+    border-radius: 10px;
+    padding: 3px 3px 3px 10px;
+  }
+  .chip-group-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mute);
+    white-space: nowrap;
+    padding-right: 4px;
+    user-select: none;
+  }
+  .chip {
+    padding: 5px 11px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: background .12s, color .12s;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .chip:hover { background: #E8EAED; color: var(--text); }
+  .chip.on { background: #fff; color: var(--brand); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+  /* Active filter summary — below chip row */
+  .filter-active-bar {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 0 16px 14px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filter-active-bar.visible { display: flex; }
+  .fab-label { font-size: 12px; font-weight: 600; color: var(--text-sub); white-space: nowrap; }
+  .fab-chip { padding: 3px 10px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; line-height: 1.5; }
+  .fab-clear { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--brand); cursor: pointer; white-space: nowrap; }
+  .fab-clear:hover { opacity: .75; }
+
   .topbar-actions {
     margin-left: auto;
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
   }
+  /* Icon-only action buttons */
+  .icon-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+    background: #F2F4F6;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { transform: translateY(-1px); }
+  .icon-btn.reset:hover  { background: #E8EAED; }
+  .icon-btn.image:hover  { background: #E6F4EA; }
+  .icon-btn.pdf:hover    { background: #FEE9E9; }
+
+  /* Tooltip */
+  .icon-btn::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--text-strong);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: 7px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s, transform .15s;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+    letter-spacing: 0;
+    z-index: 200;
+  }
+  .icon-btn::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border: 5px solid transparent;
+    border-top-color: var(--text-strong);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s, transform .15s;
+    z-index: 200;
+  }
+  .icon-btn:hover::after, .icon-btn:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .icon-btn:hover::before { transform: translateX(-50%) translateY(0); }
   .btn {
     display: inline-flex;
     align-items: center;
@@ -723,29 +862,80 @@
         <select class="filter-select" id="hospital-select"></select>
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-ghost" id="btn-reset">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
-          다른 파일
-        </button>
-        <button class="btn btn-secondary" id="btn-image">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <polyline points="8.5 14 11 17 13.5 14"/>
-            <line x1="11" y1="17" x2="11" y2="9"/>
-            <line x1="8" y1="9" x2="14" y2="9"/>
+        <!-- 다른 파일 업로드 -->
+        <button class="icon-btn reset" id="btn-reset" data-tip="다른 파일 업로드">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7684" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/>
           </svg>
-          이미지 저장
         </button>
-        <button class="btn btn-secondary" id="btn-pdf">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="9" y1="13" x2="15" y2="13"/>
-            <line x1="9" y1="17" x2="13" y2="17"/>
+        <!-- 이미지 저장 -->
+        <button class="icon-btn image" id="btn-image" data-tip="이미지로 저장">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke="#34A853"/>
+            <circle cx="8.5" cy="8.5" r="1.5" fill="#34A853" stroke="none"/>
+            <path d="m21 15-5-5-4 4-2-2-4 4" stroke="#34A853"/>
+            <path d="M12 17v-5M9.5 14.5 12 17l2.5-2.5" stroke="#34A853"/>
           </svg>
-          PDF 저장
+        </button>
+        <!-- PDF 저장 -->
+        <button class="icon-btn pdf" id="btn-pdf" data-tip="PDF로 저장">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="#E53935"/>
+            <polyline points="14 2 14 8 20 8" stroke="#E53935"/>
+            <text x="6" y="18" font-size="5.5" font-weight="800" fill="#E53935" stroke="none" font-family="sans-serif" letter-spacing="0.2">PDF</text>
+          </svg>
         </button>
       </div>
+    </div>
+
+    <!-- Chip filter row 1: KR6 + 달성 여부 -->
+    <div class="topbar-chips-row1" id="chip-row">
+      <div class="chip-group">
+        <span class="chip-group-label">KR6</span>
+        <button class="chip" data-filter="kr6" data-val="y">대상</button>
+        <button class="chip" data-filter="kr6" data-val="n">비대상</button>
+      </div>
+      <div class="chip-group">
+        <span class="chip-group-label">달성 여부</span>
+        <button class="chip" data-filter="달성" data-val="y">달성</button>
+        <button class="chip" data-filter="달성" data-val="n">미달성</button>
+      </div>
+    </div>
+
+    <!-- Chip filter row 2: improvement items -->
+    <div class="topbar-chips-row2">
+      <div class="chip-group">
+        <span class="chip-group-label">후기</span>
+        <button class="chip" data-filter="후기" data-val="y">미달</button>
+        <button class="chip" data-filter="후기" data-val="n">충족</button>
+      </div>
+      <div class="chip-group">
+        <span class="chip-group-label">옵션</span>
+        <button class="chip" data-filter="옵션" data-val="y">미달</button>
+        <button class="chip" data-filter="옵션" data-val="n">충족</button>
+      </div>
+      <div class="chip-group">
+        <span class="chip-group-label">증례</span>
+        <button class="chip" data-filter="증례" data-val="y">미달</button>
+        <button class="chip" data-filter="증례" data-val="n">충족</button>
+      </div>
+      <div class="chip-group">
+        <span class="chip-group-label">앱결제</span>
+        <button class="chip" data-filter="앱결제" data-val="y">미달</button>
+        <button class="chip" data-filter="앱결제" data-val="n">충족</button>
+      </div>
+      <div class="chip-group">
+        <span class="chip-group-label">Q&amp;A</span>
+        <button class="chip" data-filter="QA" data-val="y">미달</button>
+        <button class="chip" data-filter="QA" data-val="n">충족</button>
+      </div>
+    </div>
+
+    <!-- Active filter summary bar -->
+    <div class="filter-active-bar" id="active-filter-bar">
+      <span class="fab-label">적용된 필터</span>
+      <span id="fab-chips"></span>
+      <span class="fab-clear" id="fab-clear">✕ 초기화</span>
     </div>
   </div>
 
@@ -762,14 +952,108 @@
 
 <script>
 /* =============================================================
+   CHIP FILTER LOGIC
+============================================================= */
+const FILTER_LABELS = {
+  kr6:    { y: 'KR6 대상', n: 'KR6 비대상' },
+  달성:   { y: '달성', n: '미달성' },
+  후기:   { y: '후기 미달', n: '후기 충족' },
+  옵션:   { y: '옵션 미달', n: '옵션 충족' },
+  증례:   { y: '증례 미달', n: '증례 충족' },
+  앱결제: { y: '앱결제 미달', n: '앱결제 충족' },
+  QA:     { y: 'Q&A 미달', n: 'Q&A 충족' }
+};
+
+// Wire chip buttons
+document.querySelectorAll('.chip[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.filter;
+    const val = btn.dataset.val;
+    // Toggle: clicking active chip deactivates it
+    if (state.filters[key] === val) {
+      state.filters[key] = null;
+      btn.classList.remove('on');
+    } else {
+      // Deactivate sibling chip in same group
+      btn.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+      state.filters[key] = val;
+      btn.classList.add('on');
+    }
+    updateActiveFilterBar();
+    renderReport();
+  });
+});
+
+document.getElementById('fab-clear').addEventListener('click', () => {
+  Object.keys(state.filters).forEach(k => { state.filters[k] = null; });
+  document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('on'));
+  updateActiveFilterBar();
+  renderReport();
+});
+
+function updateActiveFilterBar() {
+  const bar = document.getElementById('active-filter-bar');
+  const chipsEl = document.getElementById('fab-chips');
+  const active = Object.entries(state.filters).filter(([, v]) => v !== null);
+  if (active.length === 0) {
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+  chipsEl.innerHTML = active.map(([k, v]) =>
+    `<span class="fab-chip">${FILTER_LABELS[k][v]}</span>`
+  ).join('');
+}
+
+// Apply chip filters to an event list
+function applyChipFilters(events) {
+  return events.filter(ev => {
+    const cond = ev['현재 미충족 조건(26-2)'] || '';
+    const flags = parseDeficiencyFlags(cond);
+
+    // KR6 대상
+    if (state.filters.kr6 !== null) {
+      const isKr6 = (ev['KR6 대상'] || '').trim() === '대상';
+      if (state.filters.kr6 === 'y' && !isKr6) return false;
+      if (state.filters.kr6 === 'n' && isKr6) return false;
+    }
+    // 달성 여부
+    if (state.filters['달성'] !== null) {
+      const isDone = (ev['달성 여부'] || '').trim() === 'O';
+      if (state.filters['달성'] === 'y' && !isDone) return false;
+      if (state.filters['달성'] === 'n' && isDone) return false;
+    }
+    // Improvement flags: 'y' = has the flag (미달), 'n' = doesn't (충족)
+    const flagMap = { 후기:'후기', 옵션:'옵션', 증례:'증례', 앱결제:'앱결제', QA:'Q&A' };
+    for (const [stateKey, flagKey] of Object.entries(flagMap)) {
+      if (state.filters[stateKey] === null) continue;
+      const hasFlag = flags.has(flagKey);
+      if (state.filters[stateKey] === 'y' && !hasFlag) return false;
+      if (state.filters[stateKey] === 'n' && hasFlag) return false;
+    }
+    return true;
+  });
+}
+
+/* =============================================================
    STATE
 ============================================================= */
 const state = {
-  data: null,        // parsed rows (objects keyed by header)
-  hospitals: [],     // grouped { name, am, status, events: [] }
-  ams: [],           // unique AM list
+  data: null,
+  hospitals: [],
+  ams: [],
   selectedAM: '',
-  selectedHospital: ''
+  selectedHospital: '',
+  // Chip filters — each key: null (모두) | 'y' (해당/미달/대상) | 'n' (미해당/충족/비대상)
+  filters: {
+    kr6:    null,   // 'y'=대상, 'n'=비대상
+    달성:   null,   // 'y'=달성O, 'n'=미달성X
+    후기:   null,
+    옵션:   null,
+    증례:   null,
+    앱결제: null,
+    QA:     null
+  }
 };
 
 const REQUIRED_COLS = [
@@ -1164,11 +1448,27 @@ async function renderReport() {
   const hospital = state.hospitals.find(h => (h.id + '__' + h.name) === state.selectedHospital);
   if (!hospital) { renderEmpty(); return; }
 
+  // Apply chip filters
+  const filteredEvents = applyChipFilters(hospital.events);
+
+  // Show empty state if filters eliminate everything
+  if (filteredEvents.length === 0) {
+    container.innerHTML = `<div class="a4-page">
+      <div class="empty-events">
+        <div class="empty-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="empty-title">조건에 맞는 이벤트가 없어요</div>
+        <div class="empty-desc">필터를 변경하거나 초기화해 보세요.</div>
+      </div></div>`;
+    return;
+  }
+
   // ---- measure real heights ----
-  const rowHeights = await measureRowHeights(hospital.events);
+  const rowHeights = await measureRowHeights(filteredEvents);
 
   const headerH       = measureBlock(buildHospitalHeaderHtml(hospital));
-  const sectionTitleH = measureBlock(`<div class="section-title">이벤트 목록 <span class="count">${hospital.events.length}건</span></div>`);
+  const sectionTitleH = measureBlock(`<div class="section-title">이벤트 목록 <span class="count">${filteredEvents.length}건</span></div>`);
   const tableHeaderH  = measureBlock(`<table class="events-table" style="table-layout:fixed;width:100%"><thead><tr>
     <th class="col-id">ID</th>
     <th class="col-title">이벤트명</th>
@@ -1178,7 +1478,7 @@ async function renderReport() {
   const guideH = measureBlock(buildGuideHtml(), 'font-size:13px');
 
   // ---- paginate using real heights ----
-  const events = hospital.events;
+  const events = filteredEvents;
   const pages = [];
   let cursor = 0;
   let isFirstPage = true;
@@ -1215,7 +1515,7 @@ async function renderReport() {
     if (p.kind === 'table') {
       if (p.isFirstPage) {
         inner += buildHospitalHeaderHtml(hospital);
-        inner += `<div class="section-title">이벤트 목록 <span class="count">${hospital.events.length}건</span></div>`;
+        inner += `<div class="section-title">이벤트 목록 <span class="count">${filteredEvents.length}건</span></div>`;
       }
       inner += buildTableHtml(p.rows);
       if (p.includeGuide) inner += buildGuideHtml();
@@ -1316,8 +1616,8 @@ async function exportImage() {
   ].join(';');
   tempDiv.innerHTML =
     buildHospitalHeaderHtml(hospital)
-    + `<div class="section-title">이벤트 목록 <span class="count">${hospital.events.length}건</span></div>`
-    + buildTableHtml(hospital.events)
+    + `<div class="section-title">이벤트 목록 <span class="count">${applyChipFilters(hospital.events).length}건</span></div>`
+    + buildTableHtml(applyChipFilters(hospital.events))
     + buildGuideHtml();
   document.body.appendChild(tempDiv);
 
@@ -1471,6 +1771,10 @@ document.getElementById('btn-pdf').addEventListener('click', exportPDF);
 document.getElementById('btn-image').addEventListener('click', exportImage);
 document.getElementById('btn-reset').addEventListener('click', () => {
   fileInput.value = '';
+  // Reset chip filters
+  Object.keys(state.filters).forEach(k => { state.filters[k] = null; });
+  document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('on'));
+  document.getElementById('active-filter-bar').classList.remove('visible');
   showUploadView();
 });
 
