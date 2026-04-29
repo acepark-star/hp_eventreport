@@ -314,21 +314,7 @@
   .chip:hover { background: #E8EAED; color: var(--text); }
   .chip.on { background: #fff; color: var(--brand); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
-  /* Active filter summary — below chip row */
-  .filter-active-bar {
-    max-width: 850px;
-    margin: 0 auto;
-    padding: 0 16px 14px;
-    display: none;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .filter-active-bar.visible { display: flex; }
-  .fab-label { font-size: 12px; font-weight: 600; color: var(--text-sub); white-space: nowrap; }
-  .fab-chip { padding: 3px 10px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; line-height: 1.5; }
-  .fab-clear { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--brand); cursor: pointer; white-space: nowrap; }
-  .fab-clear:hover { opacity: .75; }
+
 
   .topbar-actions {
     margin-left: auto;
@@ -931,12 +917,6 @@
       </div>
     </div>
 
-    <!-- Active filter summary bar -->
-    <div class="filter-active-bar" id="active-filter-bar">
-      <span class="fab-label">적용된 필터</span>
-      <span id="fab-chips"></span>
-      <span class="fab-clear" id="fab-clear">✕ 초기화</span>
-    </div>
   </div>
 
   <main id="report-container"></main>
@@ -954,16 +934,6 @@
 /* =============================================================
    CHIP FILTER LOGIC
 ============================================================= */
-const FILTER_LABELS = {
-  kr6:    { y: 'KR6 대상', n: 'KR6 비대상' },
-  달성:   { y: '달성', n: '미달성' },
-  후기:   { y: '후기 미달', n: '후기 충족' },
-  옵션:   { y: '옵션 미달', n: '옵션 충족' },
-  증례:   { y: '증례 미달', n: '증례 충족' },
-  앱결제: { y: '앱결제 미달', n: '앱결제 충족' },
-  QA:     { y: 'Q&A 미달', n: 'Q&A 충족' }
-};
-
 // A filter group is "active" (narrowing) only when exactly one of y/n is selected.
 // Both ON or both OFF → no filter applied for that group.
 function isGroupFiltering(group) {
@@ -974,44 +944,12 @@ function isGroupFiltering(group) {
 document.querySelectorAll('.chip[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
     const key = btn.dataset.filter;
-    const val = btn.dataset.val; // 'y' or 'n'
+    const val = btn.dataset.val;
     state.filters[key][val] = !state.filters[key][val];
     btn.classList.toggle('on', state.filters[key][val]);
-    updateActiveFilterBar();
     renderReport();
   });
 });
-
-// Reset all chips to both-selected
-document.getElementById('fab-clear').addEventListener('click', () => {
-  Object.keys(state.filters).forEach(k => {
-    state.filters[k] = { y: true, n: true };
-  });
-  document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.add('on'));
-  updateActiveFilterBar();
-  renderReport();
-});
-
-function updateActiveFilterBar() {
-  const bar = document.getElementById('active-filter-bar');
-  const chipsEl = document.getElementById('fab-chips');
-  // Only show active chips where exactly one side is selected
-  const activeParts = [];
-  for (const [k, g] of Object.entries(state.filters)) {
-    if (isGroupFiltering(g)) {
-      const val = g.y ? 'y' : 'n';
-      activeParts.push(FILTER_LABELS[k][val]);
-    }
-  }
-  if (activeParts.length === 0) {
-    bar.classList.remove('visible');
-    return;
-  }
-  bar.classList.add('visible');
-  chipsEl.innerHTML = activeParts.map(l =>
-    `<span class="fab-chip">${l}</span>`
-  ).join('');
-}
 
 // Apply chip filters to an event list
 function applyChipFilters(events) {
@@ -1784,10 +1722,8 @@ document.getElementById('btn-pdf').addEventListener('click', exportPDF);
 document.getElementById('btn-image').addEventListener('click', exportImage);
 document.getElementById('btn-reset').addEventListener('click', () => {
   fileInput.value = '';
-  // Reset chip filter state
   Object.keys(state.filters).forEach(k => { state.filters[k] = { y: true, n: true }; });
   document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('on'));
-  document.getElementById('active-filter-bar').classList.remove('visible');
   showUploadView();
 });
 
