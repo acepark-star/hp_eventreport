@@ -964,29 +964,30 @@ const FILTER_LABELS = {
   QA:     { y: 'Q&A 미달', n: 'Q&A 충족' }
 };
 
-// Wire chip buttons
+// A filter group is "active" (narrowing) only when exactly one of y/n is selected.
+// Both ON or both OFF → no filter applied for that group.
+function isGroupFiltering(group) {
+  return group.y !== group.n; // XOR
+}
+
+// Wire chip buttons — each chip toggles independently
 document.querySelectorAll('.chip[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
     const key = btn.dataset.filter;
-    const val = btn.dataset.val;
-    // Toggle: clicking active chip deactivates it
-    if (state.filters[key] === val) {
-      state.filters[key] = null;
-      btn.classList.remove('on');
-    } else {
-      // Deactivate sibling chip in same group
-      btn.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
-      state.filters[key] = val;
-      btn.classList.add('on');
-    }
+    const val = btn.dataset.val; // 'y' or 'n'
+    state.filters[key][val] = !state.filters[key][val];
+    btn.classList.toggle('on', state.filters[key][val]);
     updateActiveFilterBar();
     renderReport();
   });
 });
 
+// Reset all chips to both-selected
 document.getElementById('fab-clear').addEventListener('click', () => {
-  Object.keys(state.filters).forEach(k => { state.filters[k] = null; });
-  document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('on'));
+  Object.keys(state.filters).forEach(k => {
+    state.filters[k] = { y: true, n: true };
+  });
+  document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.add('on'));
   updateActiveFilterBar();
   renderReport();
 });
@@ -994,14 +995,21 @@ document.getElementById('fab-clear').addEventListener('click', () => {
 function updateActiveFilterBar() {
   const bar = document.getElementById('active-filter-bar');
   const chipsEl = document.getElementById('fab-chips');
-  const active = Object.entries(state.filters).filter(([, v]) => v !== null);
-  if (active.length === 0) {
+  // Only show active chips where exactly one side is selected
+  const activeParts = [];
+  for (const [k, g] of Object.entries(state.filters)) {
+    if (isGroupFiltering(g)) {
+      const val = g.y ? 'y' : 'n';
+      activeParts.push(FILTER_LABELS[k][val]);
+    }
+  }
+  if (activeParts.length === 0) {
     bar.classList.remove('visible');
     return;
   }
   bar.classList.add('visible');
-  chipsEl.innerHTML = active.map(([k, v]) =>
-    `<span class="fab-chip">${FILTER_LABELS[k][v]}</span>`
+  chipsEl.innerHTML = activeParts.map(l =>
+    `<span class="fab-chip">${l}</span>`
   ).join('');
 }
 
@@ -1011,25 +1019,26 @@ function applyChipFilters(events) {
     const cond = ev['현재 미충족 조건(26-2)'] || '';
     const flags = parseDeficiencyFlags(cond);
 
-    // KR6 대상
-    if (state.filters.kr6 !== null) {
+    // KR6
+    if (isGroupFiltering(state.filters.kr6)) {
       const isKr6 = (ev['KR6 대상'] || '').trim() === '대상';
-      if (state.filters.kr6 === 'y' && !isKr6) return false;
-      if (state.filters.kr6 === 'n' && isKr6) return false;
+      if (state.filters.kr6.y && !isKr6) return false;
+      if (state.filters.kr6.n && isKr6) return false;
     }
     // 달성 여부
-    if (state.filters['달성'] !== null) {
+    if (isGroupFiltering(state.filters['달성'])) {
       const isDone = (ev['달성 여부'] || '').trim() === 'O';
-      if (state.filters['달성'] === 'y' && !isDone) return false;
-      if (state.filters['달성'] === 'n' && isDone) return false;
+      if (state.filters['달성'].y && !isDone) return false;
+      if (state.filters['달성'].n && isDone) return false;
     }
-    // Improvement flags: 'y' = has the flag (미달), 'n' = doesn't (충족)
+    // Improvement flags
     const flagMap = { 후기:'후기', 옵션:'옵션', 증례:'증례', 앱결제:'앱결제', QA:'Q&A' };
     for (const [stateKey, flagKey] of Object.entries(flagMap)) {
-      if (state.filters[stateKey] === null) continue;
+      const g = state.filters[stateKey];
+      if (!isGroupFiltering(g)) continue;
       const hasFlag = flags.has(flagKey);
-      if (state.filters[stateKey] === 'y' && !hasFlag) return false;
-      if (state.filters[stateKey] === 'n' && hasFlag) return false;
+      if (g.y && !hasFlag) return false; // wants 미달 only, but this row is 충족
+      if (g.n && hasFlag) return false;  // wants 충족 only, but this row is 미달
     }
     return true;
   });
@@ -1044,15 +1053,17 @@ const state = {
   ams: [],
   selectedAM: '',
   selectedHospital: '',
-  // Chip filters — each key: null (모두) | 'y' (해당/미달/대상) | 'n' (미해당/충족/비대상)
+  // Each filter group: { y: bool, n: bool }
+  // Both true (default) = no filter (show all). One true = show only that value.
+  // Both false = treated same as both true (show all).
   filters: {
-    kr6:    null,   // 'y'=대상, 'n'=비대상
-    달성:   null,   // 'y'=달성O, 'n'=미달성X
-    후기:   null,
-    옵션:   null,
-    증례:   null,
-    앱결제: null,
-    QA:     null
+    kr6:    { y: true, n: true },
+    달성:   { y: true, n: true },
+    후기:   { y: true, n: true },
+    옵션:   { y: true, n: true },
+    증례:   { y: true, n: true },
+    앱결제: { y: true, n: true },
+    QA:     { y: true, n: true }
   }
 };
 
@@ -1709,6 +1720,8 @@ function hideLoading() {
 function showDetailView() {
   document.getElementById('upload-view').style.display = 'none';
   document.getElementById('detail-view').classList.add('show');
+  // All chips start fully selected
+  document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.add('on'));
 }
 function showUploadView() {
   document.getElementById('upload-view').style.display = '';
@@ -1771,8 +1784,8 @@ document.getElementById('btn-pdf').addEventListener('click', exportPDF);
 document.getElementById('btn-image').addEventListener('click', exportImage);
 document.getElementById('btn-reset').addEventListener('click', () => {
   fileInput.value = '';
-  // Reset chip filters
-  Object.keys(state.filters).forEach(k => { state.filters[k] = null; });
+  // Reset chip filter state
+  Object.keys(state.filters).forEach(k => { state.filters[k] = { y: true, n: true }; });
   document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('on'));
   document.getElementById('active-filter-bar').classList.remove('visible');
   showUploadView();
